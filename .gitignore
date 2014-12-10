@@ -1,0 +1,4 @@
+*.sw[A-z]
+*.o
+*.otf
+otf_parser
