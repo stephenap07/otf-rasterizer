@@ -1,6 +1,7 @@
 /* g++ -std=c++11 */
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -23,6 +24,13 @@ enum class VersionNum : uint32_t {
 };
 
 
+enum class FontType {
+    TTF,
+    OTF,
+    NONE
+};
+
+
 union header_version_u {
     char str[4];
     VersionNum num;
@@ -42,6 +50,7 @@ struct Header {
     uint16_t entry_selector;
     uint16_t range_shift;
     std::string get_version_str() const;
+    FontType get_font_type() const;
 };
 
 
@@ -89,12 +98,6 @@ void read_in_otf(std::ifstream &otf_file, Header &header, OffsetTable &offset_ta
  * Prints status of lil endian or big endian
  */
 void print_debug_info();
-
-
-/**
- * Prints debug message to say if this is CFF data
- */
-void print_otf_version(const Header &header);
 
 
 /**
@@ -236,13 +239,6 @@ void read_in_otf(std::ifstream &otf_file, Header &header, OffsetTable &offset_ta
     otf_file.close();
 }
 
-void print_otf_version(const Header &header)
-{
-    if (header.version.num == VersionNum::V_CFF) {
-        std::cout << "Contains CFF" << std::endl;
-    }
-}
-
 void print_debug_info()
 {
     if (is_big_endian()) {
@@ -260,7 +256,14 @@ void print_otf_header(const Header &header)
     int entry_selector_width = 15;
     int range_shift_width = 13;
 
-    print_otf_version(header);
+    FontType font_type = header.get_font_type();
+    if (font_type == FontType::OTF) {
+        std::cout << "Font Type: OTF" << std::endl;
+    } else if (font_type == FontType::TTF) {
+        std::cout << "Font Type: TTF" << std::endl;
+    } else {
+        std::cerr << "Error, unknown font type" << std::endl;
+    }
 
     std::cout << std::setw(version_width) <<  "Version"
               << std::setw(num_table_width) <<  "Number of tables"
@@ -320,10 +323,27 @@ void print_offsets(const OffsetTable &offset_table)
 
 std::string Header::get_version_str() const
 {
-    char version_str[5];
-    strncpy(version_str, version.str, 4);
-    version_str[4] = '\0';
-    return std::string(version_str);
+    FontType font_type = get_font_type();
+    if (font_type == FontType::OTF) {
+        char version_str[5];
+        strncpy(version_str, version.str, 4);
+        version_str[4] = '\0';
+        return std::string(version_str);
+    } else if (font_type == FontType::TTF) {
+        return std::string("1.0");
+    } else {
+        return std::string();
+    }
+}
+
+FontType Header::get_font_type() const
+{
+    if (version.num == VersionNum::V_CFF) {
+        return FontType::OTF;
+    } else if (version.num == VersionNum::V_1_0) {
+        return FontType::TTF;
+    }
+    return FontType::NONE;
 }
 
 
